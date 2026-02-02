@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/) and
 follows the guidance of [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.1.0a0] - Unreleased
+## [0.1.1]
 
 ### Added
 - Energy telemetry pipeline with CPU, GPU, memory, and optional RAPL
@@ -33,10 +33,3 @@ follows the guidance of [Keep a Changelog](https://keepachangelog.com/).
 - Historical telemetry modules now include Google-style docstrings for
   consistent project-wide documentation.
 
-### Known Issues
-- The `carbon_ops.estimation.estimator` module remains monolithic and will be
-  split into dedicated components immediately after `0.1.0a0` ships.
-- Public APIs still return legacy dictionaries in a few places; migrating to
-  `TypedDict` surfaces is in progress.
-- Schema export is manual; future releases will publish the generated artifact
-  with tagged releases.

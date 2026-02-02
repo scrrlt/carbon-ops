@@ -30,6 +30,26 @@ requirements.
 - Documentation: Google-style docstrings, factual tone.
 - Imports: standard library, third-party, and local packages grouped and sorted.
 
+## Pre-commit Hooks (Recommended)
+
+To catch issues early, install the pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
+
+## Continuous Integration
+
+All pull requests are automatically checked via GitHub Actions. CI will run:
+
+- Linting (`ruff`)
+- Formatting (`black`)
+- Type checks (`mypy --strict`)
+- Security checks (`bandit`)
+- Tests (`pytest`)
+
+Your PR must pass all checks before it can be merged.
+
 ## Commit expectations
 
 - Keep commits focused and include tests when behaviour changes.

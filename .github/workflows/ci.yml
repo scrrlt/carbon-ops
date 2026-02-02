@@ -43,6 +43,11 @@ jobs:
         run: |
           python -m mypy --config-file pyproject.toml src/carbon_ops
 
+      - name: Warn on unused type ignore comments
+        run: |
+          echo "Checking for unused # type: ignore comments..."
+          python -m mypy --warn-unused-ignores src/carbon_ops || true
+
       - name: Security scan with Bandit
         run: |
           python -m bandit -c pyproject.toml -r src examples

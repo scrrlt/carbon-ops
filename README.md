@@ -1,129 +1,92 @@
 # carbon-ops
 
-`carbon-ops` is an Application Performance Monitor (APM) focused on energy
-logging and carbon estimation for Python workloads. It measures the marginal
-carbon emissions of individual tasks, tracks CPU, GPU, and memory usage, and
-propagates uncertainty through each estimate while emitting canonical ledger
-records. The repository bundles the Python library, a privileged polling daemon,
-and helper scripts for audit workflows.
+`carbon-ops` is an application performance monitor (APM) for energy logging and carbon estimation in Python workloads. It measures marginal carbon emissions for individual tasks, tracks CPU, GPU, and memory usage, and propagates uncertainty through each estimate. Output is written as canonical JSON lines with hash chaining for auditability. The repository includes the core Python library, a privileged polling daemon, and supporting scripts for audit workflows.
 
 ## Components
 
-- **Library:** energy logging helpers, carbon-estimation routines, and ledger
-  utilities that emit canonical JSON lines with hash chaining.
-- **Governance daemon:** polls RAPL counters at 10 Hz, maintains a monotonic
-  accumulator, and serves readings over a Unix domain socket so unprivileged
-  processes have access to wrap-safe totals.
-- **Examples:** reference scripts that show how to assemble the pieces,
-  including the aliasing demo that compares the governance daemon to a 15 s
-  Prometheus-style scraper.
-- **Documentation:** Markdown files and notes that cover deployment, limitations,
-  and planned work.
+- **Library**: Energy logging utilities, carbon estimation methods, and ledger emitters that produce tamper-evident records.
+- **Governance daemon**: Polls RAPL counters at 10 Hz, maintains a monotonic accumulator, and exposes readings over a Unix domain socket for unprivileged access.
+- **Examples**: Reference scripts demonstrating integration patterns, including a comparison between the governance daemon and a 15-second Prometheus-style scraper.
+- **Documentation**: Markdown files covering deployment, telemetry modes, limitations, and planned features.
 
-## Use cases
+## Use Cases
 
-- Collect host telemetry (CPU, GPU, memory, RAPL) for training or inference
-  jobs and store the results as time-stamped metrics.
-- Estimate carbon emissions for a completed span using location-aware grid
-  intensity data. The estimator records the method (`analytical_truncated` or
-  `monte_carlo`) and confidence interval metadata in the output.
-- Append audit ledger entries where each JSON object includes the hash of
-  the previous entry, enabling tamper detection.
-- Attribute package-level energy to individual processes by combining
-  governance-daemon readings with per-process CPU time (`allocation_ratio`).
+- Collect host-level telemetry (CPU, GPU, memory, RAPL) for training or inference jobs.
+- Estimate carbon emissions for a time span using location-specific grid intensity data. The estimator records the method (`analytical_truncated` or `monte_carlo`) and includes confidence interval metadata.
+- Emit audit ledger entries with hash-linked JSON lines to support tamper detection.
+- Attribute energy usage to individual processes using governance daemon totals and per-process CPU time (`allocation_ratio`).
 
 ## Installation
 
-The project targets Python 3.10 and later on Linux hosts. RAPL-based telemetry
-requires access to `/sys/class/powercap` or `/dev/cpu/*/msr` (kernel modules
-`intel_rapl_common` and `msr`). Install with all extras to enable testing and
-optional providers.
+Supports Python 3.10 and later on Linux. RAPL-based telemetry requires access to `/sys/class/powercap` or `/dev/cpu/*/msr` (via `intel_rapl_common` and `msr` kernel modules). Install with extras to enable optional features and development tools:
 
 ```bash
 python -m pip install carbon-ops[all,dev]
 ```
 
-Local development clones can use the supplied virtual environment helpers in
-`scripts/` or standard tooling such as `pip` and `venv`.
+For local development, use the helpers in `scripts/` or standard tools like `venv` and `pip`.
 
-## Quick start
+## Quick Start
 
 ```python
 from carbon_ops import CarbonEstimator, EnergyLogger
 
 try:
-  logger = EnergyLogger()
+    logger = EnergyLogger()
 except Exception as exc:
-  raise SystemExit(f"EnergyLogger initialisation failed: {exc}")
+    raise SystemExit(f"EnergyLogger initialisation failed: {exc}")
 
 metric = logger.log_metrics("training_step")
 
 estimator = CarbonEstimator()
 record = estimator.estimate_over_span(
-  start_ts=metric["timestamp_start"],
-  end_ts=metric["timestamp_end"],
-  energy_wh=metric["energy"]["energy_wh_total"],
+    start_ts=metric["timestamp_start"],
+    end_ts=metric["timestamp_end"],
+    energy_wh=metric["energy"]["energy_wh_total"],
 )
 print(record.to_dict())
 ```
 
-If the governance daemon is not available, the energy summary will report
-`attribution_mode="monitor_only"` and execution continues without raising
-exceptions.
+If the governance daemon is unavailable, the logger reports `attribution_mode="monitor_only"` and continues execution without raising an exception.
 
-## Telemetry modes
+## Telemetry Modes
 
-Two RAPL backends are available:
+Two RAPL backends are supported:
 
-- **Sysfs mode** (default): reads `/sys/class/powercap/.../energy_uj` files. All
-  samples are masked to 32 bits before they are accumulated to prevent high-bit
-  noise.
-- **MSR mode** (privileged): reads `/dev/cpu/<n>/msr` directly. The governance
-  daemon fetches MSR `0x606` (RAPL power unit register), applies a 32-bit mask to RAPL
-  counters (for example MSR `0x611`), converts to microjoules, and maintains the
-  same accumulator used by the sysfs path. Enable with
-  `--rapl-mode=msr [--msr-cpus=…]`. Root or `CAP_SYS_RAWIO` and the `msr` kernel
-  module are required.
+- **Sysfs mode** (default): Reads from `/sys/class/powercap/.../energy_uj`. Samples are masked to 32 bits before accumulation to reduce noise.
+- **MSR mode** (privileged): Reads from `/dev/cpu/<n>/msr`. The daemon reads MSR `0x606` (power unit register), applies a 32-bit mask to counters (e.g., MSR `0x611`), converts to microjoules, and uses the same accumulator as sysfs. Enable with `--rapl-mode=msr [--msr-cpus=…]`. Requires root or `CAP_SYS_RAWIO` and the `msr` kernel module.
 
-## Governance daemon
+## Governance Daemon
 
-Start the daemon with the default sysfs reader:
+Start the daemon using the default sysfs mode:
 
 ```bash
 sudo python -m carbon_ops.governor.daemon
 ```
 
-A minimal MSR launch targeting the first two sockets:
+To use MSR mode on CPUs 0 and 1:
 
 ```bash
 sudo python -m carbon_ops.governor.daemon --rapl-mode=msr --msr-cpus=0,1
 ```
 
-The daemon listens on `/var/run/carbon-ops.sock` with `root:carbon-users`
-ownership and `0o660` permissions. The library degrades to monitor-only mode if
-the socket is unavailable.
+The daemon listens on `/var/run/carbon-ops.sock` with `root:carbon-users` ownership and `0o660` permissions. If the socket is unavailable, the library falls back to monitor-only mode.
 
-## Aliasing demonstration
+## Aliasing Demonstration
 
-`examples/aliasing_demo.py` contrasts the 10 Hz governance-daemon output with a mock
-Prometheus scraper that polls every 15 seconds. The script exercises a CPU busy
-loop, records energy via the Unix socket, and reports the energy that the slow
-scraper misses when RAPL wraps (the “11-second anomaly”).
+The script `examples/aliasing_demo.py` compares the 10 Hz governance daemon output with a simulated Prometheus scraper polling every 15 seconds. It runs a CPU-bound loop, logs energy via the Unix socket, and reports energy missed by the slower scraper due to RAPL counter wrapping.
 
 ```bash
 sudo python examples/aliasing_demo.py --duration 120
 ```
 
-## Ledger output
+## Ledger Output
 
-Ledger entries are written as canonical JSON lines. Each record includes the
-previous entry hash (`prev_hash`), producing a simple hash chain for tamper
-resistance. The ledger functions guarantee atomic writes using a temporary file
-followed by `os.replace`.
+Ledger entries are emitted as canonical JSON lines. Each entry includes the hash of the previous record (`prev_hash`) to form a hash chain. Writes are atomic, using a temporary file followed by `os.replace`.
 
 ## Testing
 
-Run the test matrix after installing the development dependencies:
+Run the test suite after installing development dependencies:
 
 ```bash
 python -m pytest
@@ -133,18 +96,18 @@ python -m mypy --strict .
 python -m bandit -r src
 ```
 
-The `pyproject.toml` file contains the exact tool versions used in CI.
+Tool versions are pinned in `pyproject.toml` to match CI.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [Contributing](./CONTRIBUTING). for contribution guidelines.
 
 ## License
 
-Licensed under the terms of [LICENSE](LICENSE).
+This project is licensed under the terms of [MIT License](./LICENSE).
 
 ## Support
 
-- Issues: https://github.com/scrrlt/carbon-ops/issues
-- Discussions: https://github.com/scrrlt/carbon-ops/discussions
+- Issues: [https://github.com/scrrlt/carbon-ops/issues](https://github.com/scrrlt/carbon-ops/issues)  
+- Discussions: [https://github.com/scrrlt/carbon-ops/discussions](https://github.com/scrrlt/carbon-ops/discussions)  
 - Email: s@scrrlt.dev

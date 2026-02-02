@@ -115,7 +115,7 @@ def _lock_file(fp: IO[bytes]) -> None:
         try:
             import fcntl
 
-            fcntl.flock(fp.fileno(), fcntl.LOCK_EX)  # type: ignore[attr-defined]
+            fcntl.flock(fp.fileno(), fcntl.LOCK_EX)
         except AttributeError:
             try:
                 import msvcrt
@@ -145,7 +145,7 @@ def _unlock_file(fp: IO[bytes]) -> None:
         fcntl = None  # type: ignore[assignment]
     if fcntl is not None:
         try:
-            fcntl.flock(fp.fileno(), fcntl.LOCK_UN)  # type: ignore[attr-defined]
+            fcntl.flock(fp.fileno(), fcntl.LOCK_UN)
             return
         except OSError as exc:
             logger.warning("Failed to unlock with fcntl: %s", exc)

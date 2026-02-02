@@ -15,73 +15,68 @@ on:
       - ".github/workflows/docs.yml"
 
 jobs:
-  lint-docs:
+  docs-check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        task: [lint, spell, structure]
+    name: Docs Check - ${{ matrix.task }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Lint Markdown files
-        uses: avto-dev/markdown-lint@v1
-        with:
-          args: "**/*.md"
-          ignore: "CHANGELOG.md"
-
-      - name: Check for broken links
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
-        with:
-          use-quiet-mode: "yes"
-          use-verbose-mode: "yes"
-          config-file: ".github/markdown-link-check.config.json"
-
-  spell-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Spell Check
-        uses: streetsidesoftware/cspell-action@v2
-        with:
-          files: "**/*.md"
-          config: ".github/cspell.config.yaml"
-          incremental_files_only: false
-
-  validate-structure:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate documentation structure
+      - name: Run ${{ matrix.task }} check
         run: |
-          # Check required files exist
-          files=(
-            "README.md"
-            "CONTRIBUTING.md"
-            "LICENSE"
-            "SECURITY.md"
-            "CODE_OF_CONDUCT.md"
-            "CHANGELOG.md"
-            "FAQ.md"
-            "ROADMAP.md"
-            "KNOWN_ISSUES.md"
-          )
-          for file in "${files[@]}"; do
-            if [ ! -f "$file" ]; then
-              echo "❌ Missing required file: $file"
-              exit 1
-            else
-              echo "✅ Found: $file"
-            fi
-          done
+          case "${{ matrix.task }}" in
+            lint)
+              npx markdownlint-cli2 "**/*.md" "!CHANGELOG.md" --config .markdownlint.json
+              npx markdown-link-check -q -v -c .github/markdown-link-check.config.json README.md
+              ;;
+            spell)
+              npx cspell "**/*.md" --config .github/cspell.config.yaml
+              ;;
+            structure)
+              missing=0
 
-          # Check GitHub templates exist
-          templates=(".github/ISSUE_TEMPLATE/bug_report.md" ".github/ISSUE_TEMPLATE/feature_request.md" ".github/pull_request_template.md")
-          for template in "${templates[@]}"; do
-            if [ ! -f "$template" ]; then
-              echo "❌ Missing template: $template"
-              exit 1
-            else
-              echo "✅ Found: $template"
-            fi
-          done
+              files=(
+                "README.md"
+                "CONTRIBUTING.md"
+                "LICENSE"
+                "SECURITY.md"
+                "CODE_OF_CONDUCT.md"
+                "CHANGELOG.md"
+                "FAQ.md"
+                "ROADMAP.md"
+                "KNOWN_ISSUES.md"
+              )
 
-          echo "✅ All required documentation files present"
+              for file in "${files[@]}"; do
+                if [ ! -f "$file" ]; then
+                  echo "Missing required file: $file"
+                  missing=1
+                else
+                  echo "Found: $file"
+                fi
+              done
+
+              templates=(
+                ".github/ISSUE_TEMPLATE/bug_report.md"
+                ".github/ISSUE_TEMPLATE/feature_request.md"
+                ".github/pull_request_template.md"
+              )
+
+              for template in "${templates[@]}"; do
+                if [ ! -f "$template" ]; then
+                  echo "Missing template: $template"
+                  missing=1
+                else
+                  echo "Found: $template"
+                fi
+              done
+
+              if [ "$missing" -eq 1 ]; then
+                exit 1
+              fi
+
+              echo "All required documentation files present"
+              ;;
+          esac
