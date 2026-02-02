@@ -26,12 +26,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
-import signal
-import subprocess
 import sys
 import threading
 import time
+from asyncio.subprocess import DEVNULL, Process, create_subprocess_exec
 from dataclasses import dataclass
+
 from carbon_ops.governor.client import GovernorClient, GovernorUnavailableError
 
 BUSY_LOOP_SLEEP = 0.0
@@ -59,12 +59,14 @@ def _busy_loop(stop_event: threading.Event) -> None:
             time.sleep(BUSY_LOOP_SLEEP)
 
 
-def _start_daemon() -> subprocess.Popen[str]:
+async def _start_daemon() -> Process:
     """Launch the carbon governor daemon in the background."""
 
     cmd = [sys.executable, "-m", "carbon_ops.governor.daemon"]
-    return subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    return await create_subprocess_exec(
+        *cmd,
+        stdout=DEVNULL,
+        stderr=DEVNULL,
     )
 
 
@@ -103,6 +105,27 @@ async def _collect_energy(duration: float) -> EnergyTotals:
     return totals
 
 
+async def _run_experiment(
+    duration: float, stop_event: threading.Event, worker: threading.Thread
+) -> EnergyTotals:
+    """Run the aliasing demonstration ensuring cleanup and safety."""
+
+    daemon_proc = await _start_daemon()
+    try:
+        await asyncio.sleep(2.0)
+        return await _collect_energy(duration)
+    finally:
+        stop_event.set()
+        worker.join(timeout=1.0)
+        if daemon_proc.returncode is None:
+            daemon_proc.terminate()
+            try:
+                await asyncio.wait_for(daemon_proc.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                daemon_proc.kill()
+                await daemon_proc.wait()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Demonstrate RAPL aliasing hazards")
     parser.add_argument(
@@ -121,24 +144,12 @@ def main() -> int:
     worker = threading.Thread(target=_busy_loop, args=(stop_event,), daemon=True)
     worker.start()
 
-    daemon_proc = _start_daemon()
-    time.sleep(2.0)
-
     try:
-        totals = asyncio.run(_collect_energy(args.duration))
+        totals = asyncio.run(_run_experiment(args.duration, stop_event, worker))
     except GovernorUnavailableError as exc:
         print("Governor unavailable:", exc)
         print("Ensure the daemon is running with the required privileges.")
         totals = EnergyTotals()
-    finally:
-        stop_event.set()
-        worker.join(timeout=1.0)
-        if daemon_proc.poll() is None:
-            try:
-                os.kill(daemon_proc.pid, signal.SIGTERM)
-            except OSError:
-                pass
-            daemon_proc.wait(timeout=5.0)
 
     print("=== Aliasing Demonstration ===")
     print(f"Duration: {args.duration:.1f} seconds")

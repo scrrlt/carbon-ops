@@ -53,7 +53,17 @@ jobs:
       - name: Validate documentation structure
         run: |
           # Check required files exist
-          files=("README.md" "CONTRIBUTING.md" "LICENSE" "SECURITY.md" "CODE_OF_CONDUCT.md" "CHANGELOG.md" "FAQ.md" "SUPPORT.md" "AUTHORS.md")
+          files=(
+            "README.md"
+            "CONTRIBUTING.md"
+            "LICENSE"
+            "SECURITY.md"
+            "CODE_OF_CONDUCT.md"
+            "CHANGELOG.md"
+            "FAQ.md"
+            "ROADMAP.md"
+            "KNOWN_ISSUES.md"
+          )
           for file in "${files[@]}"; do
             if [ ! -f "$file" ]; then
               echo "❌ Missing required file: $file"

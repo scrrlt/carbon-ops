@@ -3,14 +3,14 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "carbon_ops"
+name = "carbon-ops"
 version = "0.1.0"
 description = "Cryptographically signed, audit-grade carbon ledger for Scope 3 emissions"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Carbon Ops Contributors"}
+    {name = "scrrlt"}
 ]
 keywords = [
     "energy",
@@ -37,11 +37,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "psutil==5.9.8",
-    "cryptography==42.0.5",
     "httpx==0.27.2",
-    "pydantic==2.6.4",
     "pydantic-settings==2.2.1",
+    "psutil==5.9.8",
+    "cryptography==42.0.7",
+    "pydantic==2.6.4",
     "portalocker==2.8.2",
 ]
 
@@ -64,12 +64,13 @@ all = [
 dev = [
     "pytest==8.1.1",
     "pytest-cov==5.0.0",
-    "black==24.4.2",
+    "black==26.1.0",
     "ruff==0.3.0",
     "mypy==1.9.0",
-    "bandit==1.7.5",
+    "bandit==1.8.6",
     "types-psutil==5.9.5.17",
     "hypothesis==6.98.9",
+    "types-PyYAML==6.0.12.20241230",
 ]
 
 [project.scripts]
@@ -79,6 +80,7 @@ carbon-governor = "carbon_ops.governor.daemon:main"
 Homepage = "https://github.com/scrrlt/carbon-ops"
 Documentation = "https://github.com/scrrlt/carbon-ops#readme"
 Repository = "https://github.com/scrrlt/carbon-ops"
+PyPI = "https://pypi.org/project/co2e/"
 "Bug Tracker" = "https://github.com/scrrlt/carbon-ops/issues"
 
 [tool.setuptools]
@@ -107,9 +109,11 @@ python_version = "3.12"
 strict = true
 warn_unused_configs = true
 explicit_package_bases = true
-
-# Ensure src is recognized as the package root
 mypy_path = "./src"
+
+[[tool.mypy.overrides]]
+module = ["psutil", "yaml", "google.cloud.*"]
+ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["carbon_ops"]
@@ -118,4 +122,4 @@ source = ["carbon_ops"]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 pythonpath = ["src"]
-addopts = "-v --cov=carbon_ops.telemetry --cov=carbon_ops.energy_logger --cov-report=term-missing --cov-branch --cov-fail-under=90"
+addopts = "-v --cov=carbon_ops.telemetry --cov=carbon_ops.energy_logger --cov-report=term-missing --cov-report=xml --cov-branch --cov-fail-under=90"

@@ -15,10 +15,10 @@ def test_all_dependencies_are_pinned() -> None:
     optional = data["project"].get("optional-dependencies", {})
 
     for requirement in dependencies:
-        assert "==" in requirement, f"Core dependency not pinned: {requirement}"
+        message = f"Core dependency not pinned: {requirement}"
+        assert "==" in requirement, message
 
     for group, requirements in optional.items():
         for requirement in requirements:
-            assert "==" in requirement, (
-                f"Optional dependency '{group}' not pinned: {requirement}"
-            )
+            message = f"Optional dependency '{group}' not pinned: {requirement}"
+            assert "==" in requirement, message

@@ -8,7 +8,7 @@ import logging.handlers
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from queue import Full, Queue
-from typing import Iterable
+from typing import Iterable, override
 from uuid import uuid4
 
 LOGGER = logging.getLogger(__name__)
@@ -88,13 +88,17 @@ class JsonFormatter(logging.Formatter):
 class BoundedQueueHandler(logging.handlers.QueueHandler):
     """Queue handler that drops records when the queue is full."""
 
-    def enqueue(self, record: logging.LogRecord) -> None:  # noqa: D401 - override behaviour
+    @override
+    def enqueue(self, record: logging.LogRecord) -> None:
+        """Enqueue a record without blocking when the queue has capacity."""
+
         try:
             self.queue.put_nowait(record)
         except Full:
             self.handleError(record)
 
-    def handleError(self, record: logging.LogRecord) -> None:  # noqa: D401 - override behaviour
+    @override
+    def handleError(self, record: logging.LogRecord) -> None:
         """Drop the record silently when the queue is full."""
 
         return
