@@ -1,9 +1,11 @@
 # carbon-ops
 
-`carbon-ops` provides tooling for measuring host energy use, estimating carbon
-emissions, and writing canonical ledger records. The repository contains the
-Python library, a privileged polling daemon, and helper scripts for audit
-workflows.
+`carbon-ops` is an Application Performance Monitor (APM) focused on energy
+logging and carbon estimation for Python workloads. It measures the marginal
+carbon emissions of individual tasks, tracks CPU, GPU, and memory usage, and
+propagates uncertainty through each estimate while emitting canonical ledger
+records. The repository bundles the Python library, a privileged polling daemon,
+and helper scripts for audit workflows.
 
 ## Components
 
