@@ -1,0 +1,73 @@
+"""Public API for :mod:`carbon_ops.carbon_taxonomy`."""
+
+from __future__ import annotations
+
+from carbon_ops.carbon_taxonomy.calculations import (
+    THETA_MARGINAL_THRESHOLD,
+    THETA_OPERATIONAL_THRESHOLD,
+    calculate_average_emissions,
+    calculate_carbon_intensity,
+    calculate_cumulative_emissions,
+    calculate_emission_ratio,
+    calculate_energy,
+    calculate_operational_emissions,
+    calculate_total_carbon,
+    compare_emissions,
+    compute_emission_gap,
+    compute_theta_fraction,
+    estimate_carbon_savings,
+    estimate_emissions_reduction,
+    evaluate_emission_trend,
+    get_theta_regime,
+    normalize_emissions,
+    project_future_emissions,
+    summarize_emissions,
+)
+from carbon_ops.carbon_taxonomy.logger import (
+    CarbonTaxonomyLogger,
+    EmbodiedCarbonEstimate,
+    GRID_INTENSITIES,
+    POWER_ESTIMATES,
+    get_fallback_embodied_carbon_kg,
+)
+from carbon_ops.carbon_taxonomy.models import (
+    CarbonTaxonomyMeasurement,
+    format_measurement,
+    log_measurement,
+    log_operation_details,
+    summarize_measurements,
+    validate_measurement,
+)
+
+__all__ = [
+    "CarbonTaxonomyLogger",
+    "CarbonTaxonomyMeasurement",
+    "EmbodiedCarbonEstimate",
+    "GRID_INTENSITIES",
+    "POWER_ESTIMATES",
+    "THETA_MARGINAL_THRESHOLD",
+    "THETA_OPERATIONAL_THRESHOLD",
+    "calculate_average_emissions",
+    "calculate_carbon_intensity",
+    "calculate_cumulative_emissions",
+    "calculate_emission_ratio",
+    "calculate_energy",
+    "calculate_operational_emissions",
+    "calculate_total_carbon",
+    "compare_emissions",
+    "compute_emission_gap",
+    "compute_theta_fraction",
+    "estimate_carbon_savings",
+    "estimate_emissions_reduction",
+    "evaluate_emission_trend",
+    "get_fallback_embodied_carbon_kg",
+    "get_theta_regime",
+    "log_measurement",
+    "log_operation_details",
+    "normalize_emissions",
+    "project_future_emissions",
+    "summarize_emissions",
+    "summarize_measurements",
+    "format_measurement",
+    "validate_measurement",
+]

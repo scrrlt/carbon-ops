@@ -1,0 +1,10 @@
+# Exclude non-package files from source distribution
+prune examples
+prune tests
+prune .github
+prune assets
+include assets/carbon-governor.service
+include audit_schema_v0.1.0.json
+prune scripts
+global-exclude *.py[cod]
+global-exclude __pycache__

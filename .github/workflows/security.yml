@@ -1,0 +1,127 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run security scan weekly on Mondays at 2 AM UTC
+    - cron: "0 2 * * 1"
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit[toml]
+          pip install -e .
+
+      - name: Run Safety check for known vulnerabilities
+        id: safety
+        continue-on-error: true
+        run: |
+          safety check --json --output safety-report.json
+
+      - name: Evaluate Safety results
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path = pathlib.Path("safety-report.json")
+          if not path.exists():
+            sys.exit("safety-report.json not found")
+
+          data = json.loads(path.read_text())
+          if isinstance(data, dict):
+            records = (
+              data.get("issues")
+              or data.get("vulnerabilities")
+              or []
+            )
+          else:
+            records = data
+
+          severe = [
+            item
+            for item in records
+            if str(item.get("severity", "")).upper() in {"HIGH", "CRITICAL"}
+          ]
+          if severe:
+            print("Detected high or critical vulnerabilities:")
+            for item in severe:
+              print(json.dumps(item, indent=2))
+            sys.exit(1)
+          PY
+
+      - name: Run Bandit security scan
+        id: bandit
+        continue-on-error: true
+        run: |
+          bandit -r . -f json -o bandit-report.json
+
+      - name: Evaluate Bandit results
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path = pathlib.Path("bandit-report.json")
+          if not path.exists():
+            sys.exit("bandit-report.json not found")
+
+          data = json.loads(path.read_text())
+          results = data.get("results", []) if isinstance(data, dict) else []
+          violations = [
+            item
+            for item in results
+            if str(item.get("issue_severity", "")).upper() in {"MEDIUM", "HIGH"}
+          ]
+          if violations:
+            print("Detected Bandit findings with medium or higher severity:")
+            for item in violations:
+              print(json.dumps(item, indent=2))
+            sys.exit(1)
+          PY
+
+      - name: Upload Safety results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-results
+          path: safety-report.json
+
+      - name: Upload Bandit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-results
+          path: bandit-report.json
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3

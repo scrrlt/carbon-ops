@@ -1,0 +1,273 @@
+############################################################
+# Python Bytecode & Compiled Artifacts
+############################################################
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pyz
+*.so
+
+############################################################
+# Distribution / Packaging
+############################################################
+.Python
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+pip-wheel-metadata/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+############################################################
+# Virtual Environments & Dependency Managers
+############################################################
+.venv/
+.venv*/
+env/
+env.*/
+venv/
+venv.*/
+ENV/
+env.bak/
+venv.bak/
+__pypackages__/
+.python-version
+Pipfile.lock
+
+############################################################
+# Local Environment Files
+############################################################
+.env
+.env.*
+.envrc
+!.env.example
+!.env.sample
+
+############################################################
+# Installer & Build Logs
+############################################################
+pip-log.txt
+pip-delete-this-directory.txt
+
+############################################################
+# PyInstaller
+############################################################
+*.manifest
+*.spec
+
+############################################################
+# Testing / Coverage Reports
+############################################################
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+*.cover
+*.py,cover
+nosetests.xml
+coverage.xml
+.hypothesis/
+
+############################################################
+# Type Checkers & Linters
+############################################################
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pyre/
+.pytype/
+
+############################################################
+# Documentation Builds
+############################################################
+docs/_build/
+docs/build/
+site/
+target/
+_build/
+
+############################################################
+# Translations
+############################################################
+*.mo
+*.pot
+
+############################################################
+# Django / Flask Defaults
+############################################################
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+
+############################################################
+# Scrapy
+############################################################
+.scrapy
+
+############################################################
+# IPython / Jupyter
+############################################################
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+############################################################
+# Task Queues
+############################################################
+celerybeat-schedule
+celerybeat.pid
+
+############################################################
+# IDE / Editor Files
+############################################################
+.vscode/
+.vs/
+.idea/
+.spyderproject
+.spyproject
+.ropeproject
+*.swp
+*.swo
+*~
+*.tmp
+*.bak
+*.orig
+*.sublime-project
+*.sublime-workspace
+
+############################################################
+# OS Files
+############################################################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+ehthumbs.db
+*.lnk
+
+############################################################
+# Credentials / Security
+############################################################
+*.pem
+*.key
+*.crt
+*.cert
+secrets*/
+apikeys*/
+api_keys.txt
+credentials.json
+secrets.json
+
+############################################################
+# carbon-ops specific files
+############################################################
+# Configuration files with sensitive data
+config/secrets.yml
+config/production.yml
+.env.local
+.env.production
+
+# Energy measurement artifacts
+artifacts/
+measurements/
+logs/
+*.energy.json
+*.carbon.json
+
+# Temporary measurement data
+temp_measurements/
+*.tmp.json
+
+# Generated reports
+reports/
+output/
+results/
+
+# Calibration data (may contain sensitive system info)
+calibration/
+baseline_measurements/
+
+# Provider-specific cache
+.electricity_maps_cache/
+.watttime_cache/
+.cache/
+
+# Benchmark results
+benchmarks/
+performance_tests/
+
+# Example configurations with real keys
+examples/config_with_keys/
+examples/production_configs/
+
+# Research data and experiments
+experiments/
+research_data/
+analysis/
+
+# Large test datasets
+test_data/large/
+*.large.csv
+*.large.json
+
+# Security scan results
+security-report.json
+bandit-report.json
+safety-report.json
+
+# Local development overrides
+local_config.yml
+dev_settings.py
+local_settings.json
+
+############################################################
+# Project Data Outputs
+############################################################
+data/
+tmp/
+local_outputs/
+prediction-*.jsonl
+# Allow example files
+!examples/**/*.json
+!examples/**/*.jsonl
+!examples/**/*.yml
+!examples/**/*.yaml
+
+############################################################
+# Container / Frontend Tooling
+############################################################
+**/.dockerignore.swp
+node_modules/
+*.tsbuildinfo
+
+############################################################
+# Misc Large or Binary Files
+############################################################
+*.zip
+*.tar
+*.tar.gz
+*.tgz

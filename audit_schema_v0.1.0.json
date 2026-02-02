@@ -1,0 +1,239 @@
+{
+  "additionalProperties": false,
+  "description": "Immutable, versioned schema for a carbon audit ledger entry.",
+  "properties": {
+    "kind": {
+      "const": "carbon_ops",
+      "default": "carbon_ops",
+      "description": "Canonical namespace for carbon-ops audit records.",
+      "title": "Kind"
+    },
+    "schema_version": {
+      "const": "0.1.0",
+      "default": "0.1.0",
+      "description": "Semantic version of the audit record schema.",
+      "title": "Schema Version"
+    },
+    "type": {
+      "const": "carbon_estimate",
+      "default": "carbon_estimate",
+      "description": "Event type identifier within the carbon namespace.",
+      "title": "Type"
+    },
+    "region": {
+      "description": "Grid region identifier (for example, 'us-west').",
+      "minLength": 1,
+      "title": "Region",
+      "type": "string"
+    },
+    "source": {
+      "description": "Data provenance label (provider chain entry).",
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    },
+    "provider_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Version string reported by the intensity provider.",
+      "title": "Provider Version"
+    },
+    "calibration_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Identifier for the calibration workflow applied to telemetry.",
+      "title": "Calibration Version"
+    },
+    "conversion_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Identifier for the unit conversion strategy used.",
+      "title": "Conversion Version"
+    },
+    "datacenter_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Logical data centre classification associated with the workload.",
+      "title": "Datacenter Type"
+    },
+    "labels": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional key/value metadata propagated with the ledger entry.",
+      "title": "Labels"
+    },
+    "grams": {
+      "description": "Carbon emissions in grams of CO2e.",
+      "minimum": 0.0,
+      "title": "Grams",
+      "type": "number"
+    },
+    "energy_kwh": {
+      "description": "Measured energy consumption in kilowatt hours.",
+      "minimum": 0.0,
+      "title": "Energy Kwh",
+      "type": "number"
+    },
+    "total_energy_with_pue_kwh": {
+      "description": "Energy consumption including PUE adjustments (kWh).",
+      "minimum": 0.0,
+      "title": "Total Energy With Pue Kwh",
+      "type": "number"
+    },
+    "pue_used": {
+      "description": "Effective power usage effectiveness applied to the estimate.",
+      "minimum": 0.0,
+      "title": "Pue Used",
+      "type": "number"
+    },
+    "intensity_g_per_kwh": {
+      "description": "Grid carbon intensity used for the estimate (gCO2/kWh).",
+      "minimum": 0.0,
+      "title": "Intensity G Per Kwh",
+      "type": "number"
+    },
+    "uncertainty_pct": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Uncertainty expressed as a percentage of total emissions.",
+      "title": "Uncertainty Pct"
+    },
+    "quality_flag": {
+      "description": "Quality descriptor for the estimate inputs.",
+      "enum": [
+        "measured",
+        "estimated",
+        "fallback"
+      ],
+      "title": "Quality Flag",
+      "type": "string"
+    },
+    "coverage_pct": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Percentage of the intended time span successfully covered.",
+      "title": "Coverage Pct"
+    },
+    "meta": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Auxiliary metadata associated with the estimate (for example, estimation method tags or confidence interval details).",
+      "title": "Meta"
+    },
+    "start_ts": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Start timestamp of the measurement window (UTC).",
+      "title": "Start Ts"
+    },
+    "end_ts": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "End timestamp of the measurement window (UTC).",
+      "title": "End Ts"
+    },
+    "prev_hash": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "SHA-256 hash of the previous canonical ledger payload.",
+      "title": "Prev Hash"
+    }
+  },
+  "required": [
+    "region",
+    "source",
+    "grams",
+    "energy_kwh",
+    "total_energy_with_pue_kwh",
+    "pue_used",
+    "intensity_g_per_kwh",
+    "quality_flag"
+  ],
+  "title": "AuditRecord",
+  "type": "object"
+}
