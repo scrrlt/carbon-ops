@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "carbon-ops"
 version = "0.1.1"
-description = "Cryptographically signed, audit-grade carbon ledger for Scope 3 emissions"
+description = "Application performance monitor (APM) for energy logging and carbon estimation in Python applications with uncertainty-aware marginal emissions"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -13,14 +13,26 @@ authors = [
     {name = "scrrlt"}
 ]
 keywords = [
-    "energy",
-    "carbon",
+    "application-performance-monitoring",
+    "energy-logging",
+    "carbon-accounting",
+    "carbon-estimation",
+    "marginal-carbon",
+    "telemetry",
+    "gpu-monitoring",
+    "cpu-monitoring",
+    "memory-profiling",
+    "uncertainty-propagation",
     "sustainability",
-    "compliance",
-    "audit",
     "esg",
-    "ledger",
-    "uncertainty",
+    "audit-ledger",
+    "cryptographic-signing",
+    "green-computing",
+    "observability",
+    "python-library",
+    "scope-3",
+    "energy-efficiency",
+    "compliance",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
