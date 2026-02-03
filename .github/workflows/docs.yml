@@ -28,7 +28,7 @@ jobs:
         run: |
           case "${{ matrix.task }}" in
             lint)
-              npx markdownlint-cli2 "**/*.md" "!CHANGELOG.md" --config .markdownlint.json
+              npx markdownlint-cli2 "**/*.md" "!CHANGELOG.md" "!**/.venv/**" "!**/.venv*/**" "!**/.VENV-*/**" --config .markdownlint.json
               npx markdown-link-check -q -v -c .github/markdown-link-check.config.json README.md
               ;;
             spell)

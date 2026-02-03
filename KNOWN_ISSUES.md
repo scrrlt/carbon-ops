@@ -29,4 +29,4 @@ This document lists outstanding gaps that require follow-up work.
 
 ---
 
-Questions about these items can be directed to s@scrrlt.dev.
+Questions about these items can be directed to [s@scrrlt.dev](mailto:s@scrrlt.dev).

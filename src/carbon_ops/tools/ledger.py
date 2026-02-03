@@ -15,7 +15,6 @@ using ``portalocker`` or ``fcntl`` are unaffected.
 
 from __future__ import annotations
 
-from pathlib import Path
 import io
 import json
 import logging
@@ -23,12 +22,25 @@ import os
 import sys
 import tempfile
 from contextlib import contextmanager
-from typing import IO, Iterator
+from pathlib import Path
+from types import ModuleType
+from typing import IO, Iterator, Protocol, cast
 
 from .canonicalize import hash_canonical
 from .verify import Signer, verify_json
 
 logger = logging.getLogger(__name__)
+
+
+class _FcntlModule(Protocol):
+    """Typed protocol for the subset of :mod:`fcntl` used in this module."""
+
+    LOCK_EX: int
+    LOCK_UN: int
+
+    def flock(self, fd: int, operation: int) -> None:
+        """Lock or unlock the file descriptor."""
+
 
 # Use 32-bit signed INT_MAX (2**31 - 1) as the lock range to approximate a
 # "whole file" lock when calling msvcrt.locking on Windows. The legacy C
@@ -109,21 +121,43 @@ def _lock_file(fp: IO[bytes]) -> None:
 
     try:
         import portalocker
-
-        portalocker.lock(fp, portalocker.LOCK_EX)
     except ImportError:
+        pass
+    else:
+        portalocker.lock(fp, portalocker.LOCK_EX)
+        return
+
+    fcntl_module: ModuleType | None
+    try:
+        import fcntl as _imported_fcntl
+    except ImportError:
+        fcntl_module = None
+    else:
+        fcntl_module = _imported_fcntl
+    if fcntl_module is not None:
+        typed_fcntl = cast(_FcntlModule, fcntl_module)
         try:
-            import fcntl
-
-            fcntl.flock(fp.fileno(), fcntl.LOCK_EX)
+            typed_fcntl.flock(fp.fileno(), typed_fcntl.LOCK_EX)
+            return
         except AttributeError:
-            try:
-                import msvcrt
+            pass
 
-                # Lock the effective file range
-                msvcrt.locking(fp.fileno(), msvcrt.LK_LOCK, _WIN_MAX_LOCK_SIZE)
-            except OSError as e:
-                raise RuntimeError(f"Failed to lock file: {e}")
+    msvcrt_module: ModuleType | None
+    try:
+        import msvcrt as _imported_msvcrt
+    except ImportError:
+        msvcrt_module = None
+    else:
+        msvcrt_module = _imported_msvcrt
+    if msvcrt_module is not None:
+        try:
+            # Lock the effective file range
+            msvcrt_module.locking(
+                fp.fileno(), msvcrt_module.LK_LOCK, _WIN_MAX_LOCK_SIZE
+            )
+            return
+        except OSError as exc:
+            raise RuntimeError(f"Failed to lock file: {exc}")
 
 
 def _unlock_file(fp: IO[bytes]) -> None:
@@ -131,32 +165,41 @@ def _unlock_file(fp: IO[bytes]) -> None:
     try:
         import portalocker
     except ImportError:
-        portalocker = None  # type: ignore[assignment]
-    if portalocker is not None:
+        pass
+    else:
         try:
             portalocker.unlock(fp)
             return
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover - logging path
             logger.warning("Failed to unlock with portalocker: %s", exc)
 
+    fcntl_module: ModuleType | None
     try:
-        import fcntl
+        import fcntl as _imported_fcntl
     except ImportError:
-        fcntl = None  # type: ignore[assignment]
-    if fcntl is not None:
+        fcntl_module = None
+    else:
+        fcntl_module = _imported_fcntl
+    if fcntl_module is not None:
+        typed_fcntl = cast(_FcntlModule, fcntl_module)
         try:
-            fcntl.flock(fp.fileno(), fcntl.LOCK_UN)
+            typed_fcntl.flock(fp.fileno(), typed_fcntl.LOCK_UN)
             return
         except OSError as exc:
             logger.warning("Failed to unlock with fcntl: %s", exc)
 
+    msvcrt_module: ModuleType | None
     try:
-        import msvcrt
+        import msvcrt as _imported_msvcrt
     except ImportError:
-        msvcrt = None  # type: ignore[assignment]
-    if msvcrt is not None:
+        msvcrt_module = None
+    else:
+        msvcrt_module = _imported_msvcrt
+    if msvcrt_module is not None:
         try:
-            msvcrt.locking(fp.fileno(), msvcrt.LK_UNLCK, _WIN_MAX_LOCK_SIZE)
+            msvcrt_module.locking(
+                fp.fileno(), msvcrt_module.LK_UNLCK, _WIN_MAX_LOCK_SIZE
+            )
             return
         except OSError as exc:
             logger.warning("Failed to unlock with msvcrt: %s", exc)

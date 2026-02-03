@@ -8,6 +8,7 @@ assignees: ''
 ---
 
 ## Documentation Issue Type
+
 - [ ] Missing documentation
 - [ ] Incorrect/outdated documentation
 - [ ] Unclear/confusing documentation
@@ -16,7 +17,9 @@ assignees: ''
 - [ ] Documentation improvement suggestion
 
 ## Location
+
 Where is the documentation issue located?
+
 - [ ] README.md
 - [ ] Code docstrings
 - [ ] API documentation
@@ -27,31 +30,37 @@ Where is the documentation issue located?
 **Specific file/section:** (Please provide a link or describe the location)
 
 ## Issue Description
+
 Describe the documentation issue in detail.
 
 ## Current Content (if applicable)
-```
+
+```text
 Paste the current documentation content that has issues
 ```
 
 ## Suggested Improvement
+
 What would you like to see instead? How should it be improved?
 
-```
+```text
 Provide your suggested content or describe the improvement
 ```
 
 ## Additional Context
+
 - Is this blocking your ability to use the toolkit?
 - Are there any related areas that might need similar updates?
 - Any examples or references that might help?
 
 ## Environment (if relevant to code examples)
+
 - OS: [e.g., Windows 11, Ubuntu 22.04]
 - Python version: [e.g., 3.10.8]
 - carbon-ops version: [e.g., 0.1.0]
 
 ## Checklist
+
 - [ ] I have checked that this documentation issue doesn't already exist
 - [ ] I have provided clear information about the problem
 - [ ] I have suggested a specific improvement (if applicable)

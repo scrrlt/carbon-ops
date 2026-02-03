@@ -8,8 +8,9 @@
 
 ## Reporting a vulnerability
 
-Email s@scrrlt.dev with a description of the issue, reproduction steps, and any
-available logs. You will receive an acknowledgement within two business days.
+Email [s@scrrlt.dev](mailto:s@scrrlt.dev) with a description of the issue,
+reproduction steps, and any available logs. You will receive an acknowledgement
+within two business days.
 
 ## Disclosure
 

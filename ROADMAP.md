@@ -28,4 +28,4 @@ completed or reprioritised.
   ship a pre-configured notebook image.
 
 Feedback on sequencing can be submitted through the issue tracker or by email
-(s@scrrlt.dev).
+([s@scrrlt.dev](mailto:s@scrrlt.dev)).

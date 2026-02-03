@@ -37,6 +37,6 @@ fetching intensity data.
 
 ## How can I report issues or ask questions?
 
-- Issues: https://github.com/scrrlt/carbon-ops/issues
-- Discussions: https://github.com/scrrlt/carbon-ops/discussions
-- Email: s@scrrlt.dev
+- Issues: [https://github.com/scrrlt/carbon-ops/issues](https://github.com/scrrlt/carbon-ops/issues)
+- Discussions: GitHub Discussions coming soon
+- Email: [s@scrrlt.dev](mailto:s@scrrlt.dev)

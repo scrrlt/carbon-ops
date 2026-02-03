@@ -1,4 +1,4 @@
-## Summary
+# Summary
 
 Brief description of the changes in this pull request.
 
@@ -35,6 +35,7 @@ Describe how the changes have been tested:
 - [ ] New tests cover edge cases
 
 **Test Environment:**
+
 - OS: [e.g., Windows 11, Ubuntu 22.04]
 - Python version: [e.g., 3.10.8]
 - Dependencies: [list any specific versions if relevant]
@@ -76,7 +77,7 @@ Add any other context about the pull request here:
 - Performance implications
 - Backwards compatibility considerations
 - Alternative approaches considered
-- Future work that builds on this chang
+- Future work that builds on this change
 
 ## Checklist
 
@@ -115,5 +116,6 @@ Any specific areas you'd like reviewers to focus on:
 - [ ] Test coverage
 
 **Questions for reviewers:**
+
 1. Question 1?
 2. Question 2?
