@@ -73,3 +73,39 @@ def test_shutdown_listeners_logs_failures(caplog: pytest.LogCaptureFixture) -> N
         logging_pipeline.shutdown_listeners([failing_listener])
 
     assert "Failed to stop logging listener" in caplog.text
+
+
+def test_bounded_queue_handler_blocking() -> None:
+    """Test that BoundedQueueHandler blocks or drops correctly."""
+    from queue import Queue
+    import logging
+    from carbon_ops.telemetry.logging_pipeline import BoundedQueueHandler
+
+    # Case 1: Non-blocking behavior
+    q = Queue[logging.LogRecord](maxsize=1)
+    handler = BoundedQueueHandler(q, block=False)
+    record = logging.LogRecord("test", logging.INFO, "path", 1, "msg", (), None)
+    
+    handler.enqueue(record)
+    assert q.full()
+    
+    # Mock to check if handleError is called
+    class MockHandler(BoundedQueueHandler):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            self.error_handled = False
+        def handleError(self, record: logging.LogRecord) -> None:
+            self.error_handled = True
+            super().handleError(record)
+
+    handler_nb = MockHandler(q, block=False)
+    handler_nb.enqueue(record)
+    assert handler_nb.error_handled
+
+    # Case 2: Blocking behavior (default)
+    q_b = Queue[logging.LogRecord](maxsize=1)
+    handler_b = BoundedQueueHandler(q_b, block=True)
+    handler_b.enqueue(record)
+    assert q_b.full()
+    # We don't test actual blocking here as it would hang the test,
+    # but we've verified the non-blocking path doesn't trigger.

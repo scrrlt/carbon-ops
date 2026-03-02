@@ -8,7 +8,7 @@ import logging.handlers
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from queue import Full, Queue
-from typing import Iterable, override
+from typing import Iterable, cast, override
 from uuid import uuid4
 
 LOGGER = logging.getLogger(__name__)
@@ -86,22 +86,39 @@ class JsonFormatter(logging.Formatter):
 
 
 class BoundedQueueHandler(logging.handlers.QueueHandler):
-    """Queue handler that drops records when the queue is full."""
+    """Queue handler that prevents silent record loss.
+
+    If 'block' is True, enqueuing will block until space is available.
+    If 'block' is False, it will attempt a non-blocking put and call
+    handleError if the queue is full.
+    """
+
+    def __init__(self, queue: Queue[logging.LogRecord], *, block: bool = True) -> None:
+        super().__init__(queue)
+        self._block = block
 
     @override
     def enqueue(self, record: logging.LogRecord) -> None:
-        """Enqueue a record without blocking when the queue has capacity."""
-
-        try:
-            self.queue.put_nowait(record)
-        except Full:
-            self.handleError(record)
+        """Enqueue a record, optionally blocking if the queue is full."""
+        # self.queue is typed as _QueueLike in the base class, which lacks put/put_nowait.
+        # We cast to Queue to satisfy the type checker.
+        queue = cast(Queue[logging.LogRecord], self.queue)
+        if self._block:
+            # For compliance and audit trails, we MUST NOT drop records.
+            # Blocking ensures every record is eventually enqueued.
+            queue.put(record)
+        else:
+            try:
+                queue.put_nowait(record)
+            except Full:
+                self.handleError(record)
 
     @override
     def handleError(self, record: logging.LogRecord) -> None:
-        """Drop the record silently when the queue is full."""
-
-        return
+        """Handle errors during record enqueuing without silent drops."""
+        # Call the base implementation which (if raiseExceptions is set)
+        # prints the error to sys.stderr, providing visibility into drops.
+        super().handleError(record)
 
 
 def configure_structured_logging(
@@ -109,6 +126,7 @@ def configure_structured_logging(
     *,
     trace_id: str | None = None,
     level: int = logging.INFO,
+    block: bool = True,
 ) -> logging.handlers.QueueListener:
     """Configure the provided logger with structured JSON output.
 
@@ -117,6 +135,8 @@ def configure_structured_logging(
         trace_id: Optional static trace identifier applied to every log
             message unless set dynamically via ``LoggerAdapter`` or ``extra``.
         level: Logging verbosity level. Defaults to ``logging.INFO``.
+        block: Whether to block when the logging queue is full.
+            Defaults to True to prevent audit trail loss.
 
     Returns:
         The queue listener responsible for draining log records.
@@ -126,7 +146,7 @@ def configure_structured_logging(
     effective_trace_id = trace_id or str(uuid4())
 
     record_queue: Queue[logging.LogRecord] = Queue(maxsize=1024)
-    queue_handler = BoundedQueueHandler(record_queue)
+    queue_handler = BoundedQueueHandler(record_queue, block=block)
     logger.addHandler(queue_handler)
 
     stream_handler = logging.StreamHandler()

@@ -15,12 +15,12 @@ using ``portalocker`` or ``fcntl`` are unaffected.
 
 from __future__ import annotations
 
+import copy
 import io
 import json
 import logging
 import os
 import sys
-import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from types import ModuleType
@@ -59,15 +59,15 @@ via portalocker or fcntl is not affected by this limit."""
 
 @contextmanager
 def _acquire_ledger_lock(ledger_path: Path) -> Iterator[IO[bytes]]:
-    """Acquire a cross-platform file lock for ledger rewrites."""
-    lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with lock_path.open("a+b") as lock_fp:
-        _lock_file(lock_fp)
+    """Acquire a cross-platform file lock for the ledger file directly."""
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    # Opening in 'ab+' allows reading (from the beginning) and appending.
+    with ledger_path.open("ab+") as fp:
+        _lock_file(fp)
         try:
-            yield lock_fp
+            yield fp
         finally:
-            _unlock_file(lock_fp)
+            _unlock_file(fp)
 
 
 def _read_last_nonempty_line_by_file(f: IO[bytes]) -> str | None:
@@ -100,32 +100,38 @@ def _read_last_nonempty_line_by_file(f: IO[bytes]) -> str | None:
 
 
 def _lock_file(fp: IO[bytes]) -> None:
-    """Acquire exclusive lock using portalocker."""
+    """Acquire exclusive lock using portalocker or fallback primitives."""
     # Check file size for Windows locking limitations
     try:
-        position = fp.tell()
+        orig_pos = fp.tell()
         fp.flush()
         fp.seek(0, io.SEEK_END)
         current_size = fp.tell()
-        fp.seek(position)
         if sys.platform == "win32" and current_size > _WIN_MAX_LOCK_SIZE:
+            fp.seek(orig_pos)
             raise NotImplementedError(
                 f"Ledger file size ({current_size} bytes) exceeds Windows locking limit "
                 f"({_WIN_MAX_LOCK_SIZE} bytes), which may cause data corruption in concurrent writes. "
                 "Rotate the ledger file by stopping writers, archiving the current file, creating a new "
-                "empty ledger at the original path, and then resuming writes. See project documentation "
-                "on ledger rotation for further guidance."
+                "empty ledger at the original path, and then resuming writes."
             )
+        # For whole-file lock emulation on Windows, we always lock from the start.
+        fp.seek(0)
     except (OSError, io.UnsupportedOperation, ValueError) as exc:
         logger.debug("Unable to determine ledger size before locking: %s", exc)
+        orig_pos = 0
 
     try:
         import portalocker
     except ImportError:
         pass
     else:
-        portalocker.lock(fp, portalocker.LOCK_EX)
-        return
+        try:
+            portalocker.lock(fp, portalocker.LOCK_EX)
+            fp.seek(orig_pos)
+            return
+        except Exception as exc:
+            logger.debug("portalocker.lock failed: %s", exc)
 
     fcntl_module: ModuleType | None
     try:
@@ -138,8 +144,9 @@ def _lock_file(fp: IO[bytes]) -> None:
         typed_fcntl = cast(_FcntlModule, fcntl_module)
         try:
             typed_fcntl.flock(fp.fileno(), typed_fcntl.LOCK_EX)
+            fp.seek(orig_pos)
             return
-        except AttributeError:
+        except (AttributeError, OSError):
             pass
 
     msvcrt_module: ModuleType | None
@@ -151,17 +158,28 @@ def _lock_file(fp: IO[bytes]) -> None:
         msvcrt_module = _imported_msvcrt
     if msvcrt_module is not None:
         try:
-            # Lock the effective file range
+            # msvcrt.locking locks from CURRENT position.
+            # We already sought to 0 above.
             msvcrt_module.locking(
                 fp.fileno(), msvcrt_module.LK_LOCK, _WIN_MAX_LOCK_SIZE
             )
+            fp.seek(orig_pos)
             return
         except OSError as exc:
-            raise RuntimeError(f"Failed to lock file: {exc}")
+            fp.seek(orig_pos)
+            raise RuntimeError(f"Failed to lock file with msvcrt: {exc}")
+    
+    fp.seek(orig_pos)
 
 
 def _unlock_file(fp: IO[bytes]) -> None:
     """Release file lock using available system primitives."""
+    try:
+        orig_pos = fp.tell()
+        fp.seek(0)
+    except (OSError, io.UnsupportedOperation, ValueError):
+        orig_pos = 0
+
     try:
         import portalocker
     except ImportError:
@@ -169,6 +187,7 @@ def _unlock_file(fp: IO[bytes]) -> None:
     else:
         try:
             portalocker.unlock(fp)
+            fp.seek(orig_pos)
             return
         except Exception as exc:  # pragma: no cover - logging path
             logger.warning("Failed to unlock with portalocker: %s", exc)
@@ -184,6 +203,7 @@ def _unlock_file(fp: IO[bytes]) -> None:
         typed_fcntl = cast(_FcntlModule, fcntl_module)
         try:
             typed_fcntl.flock(fp.fileno(), typed_fcntl.LOCK_UN)
+            fp.seek(orig_pos)
             return
         except OSError as exc:
             logger.warning("Failed to unlock with fcntl: %s", exc)
@@ -197,13 +217,25 @@ def _unlock_file(fp: IO[bytes]) -> None:
         msvcrt_module = _imported_msvcrt
     if msvcrt_module is not None:
         try:
+            # msvcrt.locking unlocks from CURRENT position.
+            # We sought to 0 above.
             msvcrt_module.locking(
                 fp.fileno(), msvcrt_module.LK_UNLCK, _WIN_MAX_LOCK_SIZE
             )
+            fp.seek(orig_pos)
             return
         except OSError as exc:
             logger.warning("Failed to unlock with msvcrt: %s", exc)
+            try:
+                fp.seek(orig_pos)
+            except Exception:
+                logger.debug("Failed to restore file position after msvcrt unlock failure")
             raise
+    
+    try:
+        fp.seek(orig_pos)
+    except Exception:
+        logger.debug("Failed to restore file position after unlock")
 
 
 def _prev_hash_from_line(line: bytes) -> str | None:
@@ -245,7 +277,7 @@ def append_signed_entry(
     Append a signed entry to an NDJSON ledger using advisory file locking to ensure consistency across concurrent processes.
 
     Behavior:
-    - Acquire exclusive lock on ledger file.
+    - Acquire exclusive lock on ledger file directly.
     - Read last canonicalized entry and compute prev_hash if requested.
     - Sign payload (with prev_hash attached) and append.
 
@@ -253,53 +285,29 @@ def append_signed_entry(
     """
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
 
-    payload_to_sign: dict[str, object] = dict(payload)
+    # Use deepcopy to prevent callers from being affected by mutations
+    # during signing or prev_hash attachment.
+    payload_to_sign: dict[str, object] = copy.deepcopy(payload)
 
-    with _acquire_ledger_lock(ledger_path):
-        temp_path: Path | None = None
-        signed_entry: dict[str, object]
+    with _acquire_ledger_lock(ledger_path) as f:
+        last_line = _read_last_nonempty_line_by_file(f)
+
+        if include_prev_hash and last_line is not None:
+            prev = _prev_hash_from_line(last_line.encode("utf-8"))
+            if prev:
+                payload_to_sign["prev_hash"] = prev
+
+        signed_entry = signer.sign(payload_to_sign)
+        f.seek(0, io.SEEK_END)
+        f.write(json.dumps(signed_entry).encode("utf-8") + b"\n")
+        f.flush()
         try:
-            with tempfile.NamedTemporaryFile(
-                "w+b", dir=str(ledger_path.parent), delete=False
-            ) as tmp:
-                temp_path = Path(tmp.name)
-                last_line: bytes | None = None
-                if ledger_path.exists():
-                    with ledger_path.open("rb") as src:
-                        for line in src:
-                            tmp.write(line)
-                            if line.strip():
-                                last_line = line.strip()
-
-                if include_prev_hash and last_line is not None:
-                    prev = _prev_hash_from_line(last_line)
-                    if prev:
-                        payload_to_sign = dict(payload_to_sign)
-                        payload_to_sign["prev_hash"] = prev
-
-                signed_entry = signer.sign(payload_to_sign)
-                tmp.write(json.dumps(signed_entry).encode("utf-8") + b"\n")
-                tmp.flush()
-                try:
-                    os.fsync(tmp.fileno())
-                except OSError as exc:
-                    logger.warning(
-                        "Failed to fsync ledger temp file",
-                        extra={"error": str(exc)},
-                    )
-        except Exception:
-            if temp_path is not None and temp_path.exists():
-                temp_path.unlink(missing_ok=True)
-            raise
-
-        if temp_path is None:
-            raise RuntimeError("Temporary ledger file was not created")
-        try:
-            os.replace(temp_path, ledger_path)
-        except Exception:
-            if temp_path.exists():
-                temp_path.unlink(missing_ok=True)
-            raise
+            os.fsync(f.fileno())
+        except OSError as exc:
+            logger.warning(
+                "Failed to fsync ledger file",
+                extra={"error": str(exc)},
+            )
 
         try:
             _fsync_directory(ledger_path.parent)
@@ -310,6 +318,7 @@ def append_signed_entry(
             )
 
     return signed_entry
+
 
 
 def validate_ledger(
