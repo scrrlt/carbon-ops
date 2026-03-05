@@ -4,22 +4,30 @@ Documentation generation script.
 Generates API documentation using Sphinx.
 """
 
+import logging
 import subprocess  # nosec B404: Known safe Sphinx invocation for documentation generation
 import sys
 from pathlib import Path
 
+# Setup console logging for script output
+logger = logging.getLogger("carbon_ops.docs")
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 
 def generate_docs():
     """Generate API documentation."""
-    print("Generating API Documentation")
+    logger.info("Generating API Documentation")
 
     # Check if sphinx is available
     try:
         import sphinx
 
-        print(f"Using Sphinx {sphinx.__version__}")
+        logger.info("Using Sphinx %s", sphinx.__version__)
     except ImportError:
-        print("Sphinx not installed. Install with: pip install sphinx sphinx-rtd-theme")
+        logger.error("Sphinx not installed. Install with: pip install sphinx sphinx-rtd-theme")
         return False
 
     # Create docs directory if it doesn't exist

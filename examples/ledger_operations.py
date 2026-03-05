@@ -10,6 +10,7 @@ This example demonstrates:
 """
 
 import json
+import logging
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,6 +19,13 @@ from carbon_ops.carbon_estimator import CarbonEstimator
 from carbon_ops.ledger_writer import append_carbon_estimate
 from carbon_ops.tools.ledger import validate_ledger
 from carbon_ops.tools.verify import Signer
+
+# Setup console logging for example output
+logger = logging.getLogger("carbon_ops.examples")
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 
 def create_sample_estimates(estimator, count=5):
@@ -46,8 +54,8 @@ def create_sample_estimates(estimator, count=5):
 
 def demonstrate_ledger_operations():
     """Demonstrate ledger creation, appending, and validation."""
-    print("Carbon Ledger Operations Example")
-    print("=" * 40)
+    logger.info("Carbon Ledger Operations Example")
+    logger.info("=" * 40)
 
     # Setup
     estimator = CarbonEstimator(region="us-west")
@@ -59,7 +67,7 @@ def demonstrate_ledger_operations():
     ledger_path = Path("carbon_ledger.ndjson")
 
     # Create and append estimates
-    print("Creating and appending carbon estimates...")
+    logger.info("Creating and appending carbon estimates...")
     estimates = create_sample_estimates(estimator, 3)
 
     for estimate, operation in estimates:
@@ -72,18 +80,19 @@ def demonstrate_ledger_operations():
 
         carbon_kg = estimate["carbon_emissions_gco2"] / 1000
         signature_preview = signed_entry.get("signature", "")[:16]
-        print(
-            f"Appended {operation}: {carbon_kg:.4f} kg CO2 (sig {signature_preview}...)"
+        logger.info(
+            "Appended %s: %.4f kg CO2 (sig %s...)",
+            operation, carbon_kg, signature_preview
         )
 
     # Validate ledger
-    print("Validating ledger integrity...")
+    logger.info("Validating ledger integrity...")
     is_valid, bad_line = validate_ledger(ledger_path, signer.signing_key)
 
     if is_valid:
-        print("Ledger validation passed.")
+        logger.info("Ledger validation passed.")
     else:
-        print(f"Ledger validation failed at line {bad_line}")
+        logger.error("Ledger validation failed at line %d", bad_line)
         return
 
     # Read and analyze ledger

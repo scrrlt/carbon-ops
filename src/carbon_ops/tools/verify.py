@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+from ..exceptions import CryptoInitializationError, SignatureVerificationError
 
 # Fields excluded from signature verification and signing envelope
 SIGNATURE_FIELDS = ("signature", "signing_key", "signature_algorithm")
@@ -78,9 +79,10 @@ def verify_json(
     # Ed25519 verification only
     try:
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-    except Exception:
-        # cryptography is required
-        return False, None
+    except ImportError as exc:
+        raise CryptoInitializationError(
+            "Ed25519 verification requires the 'cryptography' package (version 41.0.0 or newer)"
+        ) from exc
 
     if not public_key_hex or not isinstance(public_key_hex, str):
         return False, None
@@ -97,8 +99,13 @@ def verify_json(
         pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(pk))
         pub.verify(bytes.fromhex(sig_hex), data)
         return True, original
-    except Exception:
+    except (ValueError, TypeError) as exc:
+        # Invalid hex encoding, malformed key, or verification failure
         return False, None
+    except Exception as exc:
+        raise SignatureVerificationError(
+            f"Ed25519 signature verification failed: {exc}"
+        ) from exc
 
 
 class Signer:
@@ -132,8 +139,8 @@ class Signer:
                 Ed25519PrivateKey,
             )
             from cryptography.hazmat.primitives import serialization
-        except Exception as exc:
-            raise ImportError(
+        except ImportError as exc:
+            raise CryptoInitializationError(
                 "Ed25519 signing requires the 'cryptography' package (version 41.0.0 or newer). "
                 "Install it with: pip install 'cryptography>=41.0.0'."
             ) from exc

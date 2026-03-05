@@ -23,6 +23,7 @@ import os
 import sys
 from contextlib import contextmanager
 from pathlib import Path
+from ..exceptions import LedgerLockError, FileSystemError
 from types import ModuleType
 from typing import IO, Iterator, Protocol, cast
 
@@ -130,8 +131,9 @@ def _lock_file(fp: IO[bytes]) -> None:
             portalocker.lock(fp, portalocker.LOCK_EX)
             fp.seek(orig_pos)
             return
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             logger.debug("portalocker.lock failed: %s", exc)
+            raise LedgerLockError(f"Failed to acquire file lock: {exc}") from exc
 
     fcntl_module: ModuleType | None
     try:
@@ -189,8 +191,9 @@ def _unlock_file(fp: IO[bytes]) -> None:
             portalocker.unlock(fp)
             fp.seek(orig_pos)
             return
-        except Exception as exc:  # pragma: no cover - logging path
+        except (OSError, ValueError) as exc:  # pragma: no cover - logging path
             logger.warning("Failed to unlock with portalocker: %s", exc)
+            raise LedgerLockError(f"Failed to release file lock: {exc}") from exc
 
     fcntl_module: ModuleType | None
     try:
@@ -228,14 +231,16 @@ def _unlock_file(fp: IO[bytes]) -> None:
             logger.warning("Failed to unlock with msvcrt: %s", exc)
             try:
                 fp.seek(orig_pos)
-            except Exception:
-                logger.debug("Failed to restore file position after msvcrt unlock failure")
+            except (OSError, IOError) as exc:
+                logger.debug("Failed to restore file position after msvcrt unlock failure: %s", exc)
+                raise FileSystemError(f"File position restoration failed: {exc}") from exc
             raise
     
     try:
         fp.seek(orig_pos)
-    except Exception:
-        logger.debug("Failed to restore file position after unlock")
+    except (OSError, IOError) as exc:
+        logger.debug("Failed to restore file position after unlock: %s", exc)
+        raise FileSystemError(f"File position restoration failed after unlock: {exc}") from exc
 
 
 def _prev_hash_from_line(line: bytes) -> str | None:
